@@ -24,7 +24,7 @@ dist-ssr
 *.sw?
 
 
-src-tauri/local-r
-src-tauri/app
+src-tauri/local-r/
+src-tauri/app/
 tmp-r-pkg/
 macos-pkg/

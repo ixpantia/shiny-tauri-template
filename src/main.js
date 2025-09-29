@@ -11,7 +11,7 @@ function run_shiny_app() {
           window.location.assign(shiny_app_url);
           // Wait for a short period before attempting again,
           // allowing the event loop to remain non-blocked.
-          await new Promise((resolve) => setTimeout(resolve, 200)); // Waits for 0.2 second
+          await new Promise((resolve) => setTimeout(resolve, 1000)); // Waits for 0.2 second
         }
       })();
     })

@@ -1,4 +1,5 @@
-use tauri::{path::BaseDirectory, Manager};
+use std::sync::Mutex;
+use tauri::{path::BaseDirectory, AppHandle, Manager, RunEvent, State};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -21,8 +22,16 @@ impl serde::Serialize for CommandError {
     }
 }
 
+#[derive(Default)]
+struct AppState {
+    child_process: Mutex<Option<std::process::Child>>,
+}
+
 #[tauri::command]
-fn run_shiny_app(handle: tauri::AppHandle) -> Result<String, CommandError> {
+fn run_shiny_app(
+    handle: tauri::AppHandle,
+    app_state: State<AppState>,
+) -> Result<String, CommandError> {
     let resource_path = handle.path().resolve("app/", BaseDirectory::Resource)?;
 
     let port: u16 = rand::random_range(3838..=4141);
@@ -57,10 +66,18 @@ fn run_shiny_app(handle: tauri::AppHandle) -> Result<String, CommandError> {
     let rhome_path = handle.path().resolve("local-r/", BaseDirectory::Resource)?;
 
     let resource_path_str = resource_path.to_str().ok_or(CommandError::Path)?;
-    let _child_process = std::process::Command::new(rscript_path)
+
+    // Kill existing process if any
+    let mut child_process_lock = app_state.child_process.lock().unwrap();
+    if let Some(mut child) = child_process_lock.take() {
+        println!("Killing previous shiny app process");
+        child.kill()?;
+    }
+
+    let child = std::process::Command::new(rscript_path)
         .arg("-e")
         .arg(format!(
-            r#"shiny::runApp('{}', port = {port})"#,
+            r#"options(shiny.port={port}); shiny::runApp('{}')"#,
             resource_path_str
         ))
         .current_dir(&resource_path)
@@ -72,6 +89,8 @@ fn run_shiny_app(handle: tauri::AppHandle) -> Result<String, CommandError> {
         .stderr(std::process::Stdio::inherit())
         .spawn()?;
 
+    *child_process_lock = Some(child);
+
     let app_url = format!("http://localhost:{port}");
     println!("THE APP URL IS: {app_url}");
     Ok(app_url)
@@ -79,9 +98,25 @@ fn run_shiny_app(handle: tauri::AppHandle) -> Result<String, CommandError> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
+        .manage(AppState::default())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![run_shiny_app])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+
+    app.run(|app_handle: &AppHandle, event: RunEvent| match event {
+        RunEvent::Exit => {
+            let app_state: State<AppState> = app_handle.state();
+            if let Ok(mut child_lock) = app_state.child_process.lock() {
+                if let Some(mut child) = child_lock.take() {
+                    println!("Killing child process on exit");
+                    if let Err(e) = child.kill() {
+                        eprintln!("Failed to kill child process: {}", e);
+                    }
+                }
+            };
+        }
+        _ => {}
+    });
 }
