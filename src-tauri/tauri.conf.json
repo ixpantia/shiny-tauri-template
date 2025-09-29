@@ -23,7 +23,8 @@
     "active": true,
     "targets": "all",
     "resources": [
-      "./app"
+      "./app",
+      "./local-r"
     ],
     "icon": [
       "icons/32x32.png",
