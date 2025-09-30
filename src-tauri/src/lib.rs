@@ -1,4 +1,4 @@
-use std::sync::Mutex;
+use std::{path::Path, sync::Mutex};
 use tauri::{path::BaseDirectory, AppHandle, Manager, RunEvent, State};
 use thiserror::Error;
 
@@ -22,20 +22,23 @@ impl serde::Serialize for CommandError {
     }
 }
 
-#[derive(Default)]
-struct AppState {
-    child_process: Mutex<Option<std::process::Child>>,
+#[cfg(target_os = "windows")]
+fn run_app(
+    app_state: State<AppState>,
+    resource_path: &Path,
+    handle: AppHandle,
+    port: u16,
+) -> Result<(), CommandError> {
+    todo!()
 }
 
-#[tauri::command]
-fn run_shiny_app(
-    handle: tauri::AppHandle,
+#[cfg(target_os = "macos")]
+fn run_app(
     app_state: State<AppState>,
-) -> Result<String, CommandError> {
-    let resource_path = handle.path().resolve("app/", BaseDirectory::Resource)?;
-
-    let port: u16 = rand::random_range(3838..=4141);
-
+    resource_path: &Path,
+    handle: AppHandle,
+    port: u16,
+) -> Result<(), CommandError> {
     let path = handle.path().resolve("local-r/", BaseDirectory::Resource)?;
 
     let path_str = path.to_str().ok_or(CommandError::Path)?;
@@ -90,6 +93,25 @@ fn run_shiny_app(
         .spawn()?;
 
     *child_process_lock = Some(child);
+
+    Ok(())
+}
+
+#[derive(Default)]
+struct AppState {
+    child_process: Mutex<Option<std::process::Child>>,
+}
+
+#[tauri::command]
+fn run_shiny_app(
+    handle: tauri::AppHandle,
+    app_state: State<AppState>,
+) -> Result<String, CommandError> {
+    let resource_path = handle.path().resolve("app/", BaseDirectory::Resource)?;
+
+    let port: u16 = rand::random_range(3838..=4141);
+
+    run_app(app_state, &resource_path, handle, port)?;
 
     let app_url = format!("http://localhost:{port}");
     println!("THE APP URL IS: {app_url}");
