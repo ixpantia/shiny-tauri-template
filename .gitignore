@@ -28,3 +28,4 @@ src-tauri/local-r/
 src-tauri/app/
 tmp-r-pkg/
 macos-pkg/
+windowspkg/

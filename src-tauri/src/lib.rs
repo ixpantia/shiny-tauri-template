@@ -29,8 +29,50 @@ fn run_app(
     handle: AppHandle,
     port: u16,
 ) -> Result<(), CommandError> {
-    todo!()
+     let path = handle.path().resolve("local-r/bin", BaseDirectory::Resource)?;
+
+    let path_str = path.to_str().ok_or(CommandError::Path)?;
+    let new_path = match std::env::var("PATH") {
+        Ok(old_path) => format!("{};{}", path_str, old_path),
+        Err(_) => path_str.to_string(),
+    };
+
+    let rscript_path = handle
+        .path()
+        .resolve("local-r/bin/R.exe", BaseDirectory::Resource)?;
+
+    fn windows_to_unix_path(
+        path:&str
+    )-> String{
+        path.replace('\\', "/")
+    }
+
+    let resource_path_str = windows_to_unix_path(resource_path.to_str().ok_or(CommandError::Path)?);
+
+    // Kill existing process if any
+    let mut child_process_lock = app_state.child_process.lock().unwrap();
+    if let Some(mut child) = child_process_lock.take() {
+        println!("Killing previous shiny app process");
+        child.kill()?;
+    }
+
+    let child = std::process::Command::new(rscript_path)
+        .arg("-e")
+        .arg(format!(
+            r#"options(shiny.port={port}); shiny::runApp('{}')"#,
+            resource_path_str
+        ))
+        .current_dir(&resource_path)
+        .env("PATH", new_path)
+        .stdout(std::process::Stdio::inherit())
+        .stderr(std::process::Stdio::inherit())
+        .spawn()?;
+
+    *child_process_lock = Some(child);
+
+    Ok(())
 }
+
 
 #[cfg(target_os = "macos")]
 fn run_app(
