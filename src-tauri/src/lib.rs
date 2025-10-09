@@ -1,6 +1,7 @@
 use std::{path::Path, sync::Mutex};
-use tauri::{path::BaseDirectory, AppHandle, Manager, RunEvent, State};
+use tauri::{path::BaseDirectory, AppHandle, Manager, RunEvent, State, Emitter};
 use thiserror::Error;
+
 
 #[derive(Debug, Error)]
 enum CommandError {
@@ -21,6 +22,12 @@ impl serde::Serialize for CommandError {
         serializer.serialize_str(self.to_string().as_ref())
     }
 }
+
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
+
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 #[cfg(target_os = "windows")]
 fn run_app(
@@ -66,6 +73,7 @@ fn run_app(
         .env("PATH", new_path)
         .stdout(std::process::Stdio::inherit())
         .stderr(std::process::Stdio::inherit())
+        .creation_flags(CREATE_NO_WINDOW)
         .spawn()?;
 
     *child_process_lock = Some(child);
@@ -146,17 +154,43 @@ struct AppState {
 
 #[tauri::command]
 fn run_shiny_app(
-    handle: tauri::AppHandle,
+    handle: tauri::AppHandle, 
     app_state: State<AppState>,
 ) -> Result<String, CommandError> {
+    
+    // Obtener la ruta
     let resource_path = handle.path().resolve("app/", BaseDirectory::Resource)?;
 
+    //Clonar el handle y la RUTA
+    let app_handle_for_thread = handle.clone();
+    let resource_path_for_run = resource_path.clone(); 
+    
     let port: u16 = rand::random_range(3838..=4141);
+    
+    // Ejecutar run_app: Pasamos el handle original (que se consume) y la RUTA CLONADA.
 
-    run_app(app_state, &resource_path, handle, port)?;
+    run_app(app_state, &resource_path_for_run, handle, port)?; 
 
     let app_url = format!("http://localhost:{port}");
     println!("THE APP URL IS: {app_url}");
+
+    let url_to_emit = app_url.clone(); 
+    
+    std::thread::spawn(move || { 
+        
+        std::thread::sleep(std::time::Duration::from_secs(4)); 
+        
+        
+        use tauri::Manager; 
+        if let Some(main_window) = app_handle_for_thread.get_webview_window("main") {
+            if let Err(e) = main_window.emit("shiny_ready", url_to_emit) {
+                eprintln!("Failed to emit shiny_ready event: {}", e);
+            }
+        } else {
+            eprintln!("Failed to find main window to emit event.");
+        }
+    });
+
     Ok(app_url)
 }
 
