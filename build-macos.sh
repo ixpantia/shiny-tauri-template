@@ -16,7 +16,7 @@ fi
 rm -rf ./macos-pkg/tmp-r-pkg
 pkgutil --expand-full ./macos-pkg/R-4.5.1-arm64.pkg ./macos-pkg/tmp-r-pkg
 rm -rf src-tauri/local-r
-cp -r ./macos-pkg/tmp-r-pkg/R-fw.pkg/Payload/R.framework/Resources src-tauri/local-r
+cp -Lr ./macos-pkg/tmp-r-pkg/R-fw.pkg/Payload/R.framework/Resources src-tauri/local-r
 
 sed -i '' '/if test -n "\${R_HOME}" && \\/,/export R_DOC_DIR/c\
 if test -z "${R_HOME}"; then\
@@ -40,7 +40,7 @@ fi\
 export R_DOC_DIR
 ' src-tauri/local-r/R
 
-cp macos-pkg/rv src-tauri/local-r
+cp -L macos-pkg/rv src-tauri/local-r
 
 if [ ! -d "shiny-app/" ]; then
   echo "Please put the contents of your rv project with a Shiny App in shiny-app/"
@@ -48,7 +48,8 @@ if [ ! -d "shiny-app/" ]; then
 fi
 
 rm -rf src-tauri/app
-cp -r shiny-app src-tauri/app
+cp -Lr shiny-app src-tauri/app
+find src-tauri/app -empty -print | xargs rm
 
 # Run rv sync using the R version that is installed in local-r
 # use the same logic as the lib.rs
@@ -62,4 +63,4 @@ export DYLD_LIBRARY_PATH="${LOCAL_R_LIB_PATH}${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY
 
 (cd src-tauri/app && rv sync)
 
-cargo tauri build
+cargo tauri build --bundles dmg
