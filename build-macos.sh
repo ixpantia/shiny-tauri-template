@@ -49,7 +49,6 @@ fi
 
 rm -rf src-tauri/app
 cp -Lr shiny-app src-tauri/app
-find src-tauri/app -empty -print | xargs rm
 
 # Run rv sync using the R version that is installed in local-r
 # use the same logic as the lib.rs
@@ -62,5 +61,7 @@ export LD_LIBRARY_PATH="${LOCAL_R_LIB_PATH}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
 export DYLD_LIBRARY_PATH="${LOCAL_R_LIB_PATH}${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
 
 (cd src-tauri/app && rv sync)
+
+find src-tauri/app -empty -print | xargs rm
 
 cargo tauri build --bundles dmg
