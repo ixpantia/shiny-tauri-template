@@ -4,10 +4,10 @@ if (-not (Test-Path -Path $windowspkg -PathType Container)) {
     New-Item -Path $windowspkg -ItemType Directory | Out-Null
 }
 
-$rInstallerUrl = "https://cran.r-project.org/bin/windows/base/R-4.5.1-win.exe"
+$rInstallerUrl = "https://cran.r-project.org/bin/windows/base/R-${env:R_VERSION}-win.exe"
 $rvZipUrl = "https://github.com/A2-ai/rv/releases/download/v0.13.2/rv-v0.13.2-x86_64-pc-windows-msvc.zip"
 
-$rInstallerPath = Join-Path -Path $windowspkg -ChildPath "R-4.5.1-win.exe"
+$rInstallerPath = Join-Path -Path $windowspkg -ChildPath "R-${env:R_VERSION}-win.exe"
 $rvZipPath = Join-Path -Path $windowspkg -ChildPath "rv-v0.13.2-x86_64-pc-windows-msvc.zip"
 $rvExtractPath = Join-Path -Path $windowspkg -ChildPath "rv"
 $localRpath = Join-Path -Path "src-tauri" -ChildPath "local-r"
