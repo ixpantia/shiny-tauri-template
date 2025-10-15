@@ -1,7 +1,10 @@
-use std::{path::Path, sync::Mutex};
-use tauri::{path::BaseDirectory, AppHandle, Manager, RunEvent, State, Emitter};
+use std::{
+    net::{Ipv4Addr, SocketAddrV4},
+    path::Path,
+    sync::Mutex,
+};
+use tauri::{path::BaseDirectory, AppHandle, Emitter, Manager, RunEvent, State};
 use thiserror::Error;
-
 
 #[derive(Debug, Error)]
 enum CommandError {
@@ -36,7 +39,9 @@ fn run_app(
     handle: AppHandle,
     port: u16,
 ) -> Result<(), CommandError> {
-     let path = handle.path().resolve("local-r/bin", BaseDirectory::Resource)?;
+    let path = handle
+        .path()
+        .resolve("local-r/bin", BaseDirectory::Resource)?;
 
     let path_str = path.to_str().ok_or(CommandError::Path)?;
     let new_path = match std::env::var("PATH") {
@@ -48,9 +53,7 @@ fn run_app(
         .path()
         .resolve("local-r/bin/R.exe", BaseDirectory::Resource)?;
 
-    fn windows_to_unix_path(
-        path:&str
-    )-> String{
+    fn windows_to_unix_path(path: &str) -> String {
         path.replace('\\', "/")
     }
 
@@ -80,7 +83,6 @@ fn run_app(
 
     Ok(())
 }
-
 
 #[cfg(target_os = "macos")]
 fn run_app(
@@ -154,37 +156,46 @@ struct AppState {
 
 #[tauri::command]
 fn run_shiny_app(
-    handle: tauri::AppHandle, 
+    handle: tauri::AppHandle,
     app_state: State<AppState>,
 ) -> Result<String, CommandError> {
-    
     // Obtener la ruta
     let resource_path = handle.path().resolve("app/", BaseDirectory::Resource)?;
 
     //Clonar el handle y la RUTA
     let app_handle_for_thread = handle.clone();
-    let resource_path_for_run = resource_path.clone(); 
-    
+    let resource_path_for_run = resource_path.clone();
+
     let port: u16 = rand::random_range(3838..=4141);
-    
+
     // Ejecutar run_app: Pasamos el handle original (que se consume) y la RUTA CLONADA.
 
-    run_app(app_state, &resource_path_for_run, handle, port)?; 
+    run_app(app_state, &resource_path_for_run, handle, port)?;
 
     let app_url = format!("http://localhost:{port}");
     println!("THE APP URL IS: {app_url}");
 
-    let url_to_emit = app_url.clone(); 
-    
-    std::thread::spawn(move || { 
-        
-        std::thread::sleep(std::time::Duration::from_secs(4)); 
-        
-        
-        use tauri::Manager; 
+    let url_to_emit = app_url.clone();
+
+    std::thread::spawn(move || {
+        // Loop hasta que podamos establecer una conexión TCP al puerto
+        let try_connect = || {
+            std::net::TcpStream::connect(SocketAddrV4::new(Ipv4Addr::from([127, 0, 0, 1]), port))
+        };
+
+        while try_connect().is_err() {
+            println!("Established connection to Shiny App, emitting shiny_ready")
+        }
+
+        use tauri::Manager;
         if let Some(main_window) = app_handle_for_thread.get_webview_window("main") {
-            if let Err(e) = main_window.emit("shiny_ready", url_to_emit) {
-                eprintln!("Failed to emit shiny_ready event: {}", e);
+            match main_window.emit("shiny_ready", url_to_emit) {
+                Err(e) => {
+                    eprintln!("Failed to emit shiny_ready event: {}", e);
+                }
+                Ok(_) => {
+                    println!("Emmited shiny_ready")
+                }
             }
         } else {
             eprintln!("Failed to find main window to emit event.");
