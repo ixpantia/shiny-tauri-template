@@ -1,8 +1,8 @@
 #!/bin/zsh
 mkdir -p macos-pkg
 
-if [ ! -f "macos-pkg/R-{R_VERSION}-arm64.pkg" ]; then
-  curl -L -o macos-pkg/R-{R_VERSION}-arm64.pkg https://cran.r-project.org/bin/macosx/big-sur-arm64/base/R-{R_VERSION}-arm64.pkg
+if [ ! -f "macos-pkg/R-${R_VERSION}-arm64.pkg" ]; then
+  curl -L -o macos-pkg/R-${R_VERSION}-arm64.pkg https://cran.r-project.org/bin/macosx/big-sur-arm64/base/R-${R_VERSION}-arm64.pkg
 fi
 
 if [ ! -f "macos-pkg/rv.tar.gz" ]; then
@@ -14,7 +14,7 @@ if [ ! -f "macos-pkg/rv" ]; then
 fi
 
 rm -rf ./macos-pkg/tmp-r-pkg
-pkgutil --expand-full ./macos-pkg/R-{R_VERSION}-arm64.pkg ./macos-pkg/tmp-r-pkg
+pkgutil --expand-full ./macos-pkg/R-${R_VERSION}-arm64.pkg ./macos-pkg/tmp-r-pkg
 rm -rf src-tauri/local-r
 cp -Lr ./macos-pkg/tmp-r-pkg/R-fw.pkg/Payload/R.framework/Resources src-tauri/local-r
 

@@ -2,6 +2,7 @@ use std::{
     net::{Ipv4Addr, SocketAddrV4},
     path::Path,
     sync::Mutex,
+    time::Duration,
 };
 use tauri::{path::BaseDirectory, AppHandle, Emitter, Manager, RunEvent, State};
 use thiserror::Error;
@@ -184,8 +185,10 @@ fn run_shiny_app(
         };
 
         while try_connect().is_err() {
-            println!("Established connection to Shiny App, emitting shiny_ready")
+            std::thread::sleep(Duration::from_millis(50));
         }
+
+        println!("Established connection to Shiny App, emitting shiny_ready");
 
         use tauri::Manager;
         if let Some(main_window) = app_handle_for_thread.get_webview_window("main") {
