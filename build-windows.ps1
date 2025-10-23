@@ -1,5 +1,6 @@
 $windowspkg = "windowspkg"
 
+
 if (-not (Test-Path -Path $windowspkg -PathType Container)) {
     New-Item -Path $windowspkg -ItemType Directory | Out-Null
 }
@@ -43,7 +44,7 @@ if (-not (Test-Path -Path $rvExtractPath -PathType Container)) {
     Write-Host "El archivo de rv ya existe. Saltando la descarga y descompresión."
 }
 
-#Start-Process -FilePath $rInstallerPath -ArgumentList "/SP-", "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/DIR=$localRpath" -Wait
+Start-Process -FilePath $rInstallerPath -ArgumentList "/SP-", "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/DIR=$localRpath" -Wait
 
 Copy-Item ".\windowspkg\rv\rv.exe" -Destination "$localRpath\bin"
 
@@ -88,3 +89,5 @@ if (-not (Test-Path -Path $rvExeFullPath)) {
 Write-Host "Ejecutando 'rv sync' en el directorio: $TauriAppDir"
 Start-Process -FilePath $rvExeFullPath -ArgumentList "sync" -Wait -WorkingDirectory $TauriAppDir
 Write-Host "'rv sync' completado."
+
+cargo tauri build
